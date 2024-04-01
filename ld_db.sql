@@ -1,5 +1,5 @@
 ./duckdb ld.duckdb
-
+-- use ctr+shift+enter to send to console. Set in keybindings.json
 -- inspect the polars cleaned subset of the data
 CREATE OR REPLACE table tdf_tbl as SELECT * FROM read_csv_auto('data/tdf100k.csv');
 
@@ -55,4 +55,9 @@ ORDER BY
 
 SELECT count(*) FROM lep_ld_view;
 
+-- .once -e -- output to text file
+.mode json
+.mode box
+SELECT * FROM lep_ld_view LIMIT 10;
 -- next steps: convert to a spatial dataset with duckdb POINT_2d type
+.schema
