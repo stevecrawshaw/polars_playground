@@ -24,6 +24,8 @@ columns = {
 },
 ignore_errors = true);
 
+COPY ld_all_clean_tbl TO 'data/ld_all_clean_tbl.parquet' (FORMAT PARQUET);
+
 DESCRIBE ld_all_clean_tbl;
 SELECT COUNT(*) FROM ld_all_clean_tbl;
 
@@ -52,6 +54,26 @@ GROUP BY
 ORDER BY 
     sensor_id, 
     DATE_TRUNC('hour', timestamp);
+
+.timer on
+SELECT 
+    sensor_id,
+    lat,
+    lon, 
+    DATE_TRUNC('hour', timestamp) + INTERVAL 1 HOUR as hour, 
+    AVG(pm10) as pm10, 
+    AVG(pm25) as 'pm2.5'
+FROM (
+        SELECT sensor_id, location, lat, lon, timestamp, P1 as pm10, P2 as pm25  FROM read_parquet('data/ld_all_clean_tbl.parquet') WHERE lat >= 51.2 AND lat <= 51.6 AND lon >= -3.0 AND lon <= -2.18)
+GROUP BY 
+    sensor_id,
+    lat,
+    lon, 
+    DATE_TRUNC('hour', timestamp)
+ORDER BY 
+    sensor_id, 
+    DATE_TRUNC('hour', timestamp);
+
 
 SELECT count(*) FROM lep_ld_view;
 
