@@ -9,6 +9,10 @@ import polars as pl
 # %%
 
 
+
+#%%
+
+# %%
 def extract_zip_files(folder_path):
     """
     Extract all the .zip files in the specified folder.
@@ -61,7 +65,8 @@ def extract_zip_files(folder_path):
 
 # %%
 # Extract all the .zip files in the specified folder
-extract_zip_files('data')
+if any(filename.endswith('.zip') for filename in os.listdir('data')):
+    extract_zip_files('data')
 
 # %%
 
@@ -78,15 +83,24 @@ con.sql('DESCRIBE ld_clean_tbl;')
 con.sql('FROM ld_clean_tbl LIMIT 10')
 
 # %%
-create_tbl_qry = """
+create_ld_tbl = """
 CREATE OR REPLACE TABLE ld_clean_tbl 
 (sensor_id BIGINT, lat FLOAT, lon FLOAT, hour TIMESTAMP, pm10 FLOAT, "pm25" FLOAT);
 """
+create_dim_ld_tbl = """
+CREATE OR REPLACE TABLE dim_ld_tbl 
+(sensor_id BIGINT, lat FLOAT, lon FLOAT);
+"""
+create_fact_ld_tbl = """
+CREATE OR REPLACE TABLE fact_ld_tbl 
+(sensor_id BIGINT, pm10 FLOAT, pm25 FLOAT);
+"""
 
-con.sql(create_tbl_qry)
+
+#con.sql(create_tbl_qry)
 
 # %%
-con.sql('SELECT count(*) FROM ld_clean_tbl')
+#con.sql('SELECT count(*) FROM ld_clean_tbl')
 
 # %%
 
@@ -122,21 +136,100 @@ def insert_data_from_parquet(file):
     con.execute(copy_qry)
 # %%
 
-for filename in os.listdir('data'):
-    if filename.endswith('.parquet'):
-        insert_data_from_parquet(os.path.join('data', filename))
-        print(f"Inserted data from {filename}")
+def insert_dim():
+    copy_qry = """
+    INSERT INTO dim_ld_tbl (sensor_id, lat, lon)
+    SELECT 
+        sensor_id, lat, lon
+    FROM (
+        SELECT 
+            sensor_id, lat, lon
+        FROM 
+            ld_clean_tbl
+    ) AS subquery
+    GROUP BY 
+        sensor_id, lat, lon
+    ORDER BY 
+        sensor_id;
+    """
+    con.execute(copy_qry)
 
+def insert_fact():
+    copy_qry = """
+    INSERT INTO fact_ld_tbl (sensor_id, pm10, pm25)
+    SELECT 
+        sensor_id, pm10, pm25
+    FROM (
+        SELECT 
+            sensor_id, pm10, pm25
+        FROM 
+            ld_clean_tbl
+    ) AS subquery
+    ORDER BY 
+        sensor_id;
+    """
+    con.execute(copy_qry)
+
+def create_woe_view():
+    create_woe_view_qry = """
+    CREATE OR REPLACE VIEW woe_view AS
+    SELECT 
+        fact_ld_tbl.sensor_id, 
+        lat, 
+        lon, 
+        hour, 
+        pm10, 
+        pm25
+    FROM 
+        fact_ld_tbl
+    LEFT JOIN
+        dim_ld_tbl ON fact_ld_tbl.sensor_id = dim_ld_tbl.sensor_id
+    WHERE 
+        lat >= 51.2 AND lat <= 51.6 AND lon >= -3.0 AND lon <= -2.18
+    ORDER BY 
+        fact_ld_tbl.sensor_id, 
+        hour DESC;
+    """
+    con.execute(create_woe_view_qry)
 
 # %%
 
-con.sql('CREATE OR REPLACE VIEW dim_ld_view AS SELECT sensor_id, lat, lon FROM ld_clean_tbl GROUP BY ALL;')
+try:
+    con.execute("BEGIN TRANSACTION;")
+    #con.execute('INSTALL spatial;')
+    #con.execute('LOAD spatial;')
+    con.sql(create_ld_tbl)
+    con.sql(create_dim_ld_tbl)
+    con.sql(create_fact_ld_tbl)
 
-# %%
-con.sql('CREATE OR REPLACE VIEW fact_ld_view AS SELECT sensor_id, pm10, pm25 as "pm2.5" FROM ld_clean_tbl;')
+    for filename in os.listdir('data'):
+        if filename.endswith('.parquet'):
+            insert_data_from_parquet(os.path.join('data', filename))
+            print(f"Inserted data from {filename}")
+            insert_dim()
+            insert_fact()
+            con.execute("DELETE FROM ld_clean_tbl;")
+
+    con.sql(create_woe_view)
+    con.execute("COMMIT;")
+    con.execute('CHECKPOINT;')
+except Exception as e:
+    # If an error occurs, rollback the transaction
+    con.execute("ROLLBACK;")
+    print(f"Transaction rolled back due to an error: {e}")
+
 # %%
 
 con.sql('SHOW TABLES;')
+
+# %%
+con.sql('SELECT count(*) FROM fact_ld_tbl')
+
+
+# %%
+
+con.sql('DESCRIBE fact_ld_tbl')
+
 # %%
 
 hourly_df = con.sql('FROM fact_ld_view;').pl()
