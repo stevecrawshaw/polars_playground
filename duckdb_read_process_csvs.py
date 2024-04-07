@@ -5,13 +5,6 @@ import duckdb
 import os
 import glob
 import polars as pl
-
-# %%
-
-
-
-#%%
-
 # %%
 def extract_zip_files(folder_path):
     """
@@ -73,14 +66,10 @@ if any(filename.endswith('.zip') for filename in os.listdir('data')):
 con = duckdb.connect('data/ld_clean.duckdb')
 
 # %%
-
 con.sql('SHOW TABLES;')
-
-con.sql('DESCRIBE ld_clean_tbl;')
-
 # %%
 
-con.sql('FROM ld_clean_tbl LIMIT 10')
+con.sql('FROM fact_ld_tbl LIMIT 10')
 
 # %%
 create_ld_tbl = """
@@ -93,14 +82,8 @@ CREATE OR REPLACE TABLE dim_ld_tbl
 """
 create_fact_ld_tbl = """
 CREATE OR REPLACE TABLE fact_ld_tbl 
-(sensor_id BIGINT, pm10 FLOAT, pm25 FLOAT);
+(sensor_id BIGINT, hour TIMESTAMP, pm10 FLOAT, pm25 FLOAT);
 """
-
-
-#con.sql(create_tbl_qry)
-
-# %%
-#con.sql('SELECT count(*) FROM ld_clean_tbl')
 
 # %%
 
@@ -156,12 +139,12 @@ def insert_dim():
 
 def insert_fact():
     copy_qry = """
-    INSERT INTO fact_ld_tbl (sensor_id, pm10, pm25)
+    INSERT INTO fact_ld_tbl (sensor_id, hour, pm10, pm25)
     SELECT 
-        sensor_id, pm10, pm25
+        sensor_id, hour, pm10, pm25
     FROM (
         SELECT 
-            sensor_id, pm10, pm25
+            sensor_id, hour, pm10, pm25
         FROM 
             ld_clean_tbl
     ) AS subquery
@@ -170,27 +153,56 @@ def insert_fact():
     """
     con.execute(copy_qry)
 
-def create_woe_view():
-    create_woe_view_qry = """
-    CREATE OR REPLACE VIEW woe_view AS
-    SELECT 
-        fact_ld_tbl.sensor_id, 
-        lat, 
-        lon, 
-        hour, 
-        pm10, 
-        pm25
-    FROM 
-        fact_ld_tbl
-    LEFT JOIN
-        dim_ld_tbl ON fact_ld_tbl.sensor_id = dim_ld_tbl.sensor_id
-    WHERE 
-        lat >= 51.2 AND lat <= 51.6 AND lon >= -3.0 AND lon <= -2.18
-    ORDER BY 
-        fact_ld_tbl.sensor_id, 
-        hour DESC;
-    """
-    con.execute(create_woe_view_qry)
+create_woe_hour_view_qry = """
+CREATE OR REPLACE VIEW woe_hour_view AS
+SELECT 
+    fact_ld_tbl.sensor_id, 
+    lat, 
+    lon, 
+    hour, 
+    pm10, 
+    pm25
+FROM 
+    fact_ld_tbl
+LEFT JOIN
+    dim_ld_tbl ON fact_ld_tbl.sensor_id = dim_ld_tbl.sensor_id
+WHERE 
+    lat >= 51.2 AND lat <= 51.6 AND lon >= -3.0 AND lon <= -2.18
+ORDER BY 
+    fact_ld_tbl.sensor_id, 
+    hour;
+"""
+create_daily_view_qry = """
+CREATE OR REPLACE VIEW daily_view AS
+SELECT 
+    fact_ld_tbl.sensor_id,
+    date_trunc('day', hour) as date,
+    AVG(pm10) as daily_pm10,
+    AVG(pm25) as daily_pm25 
+FROM fact_ld_tbl 
+LEFT JOIN
+    dim_ld_tbl ON fact_ld_tbl.sensor_id = dim_ld_tbl.sensor_id
+GROUP BY fact_ld_tbl.sensor_id, date
+ORDER BY fact_ld_tbl.sensor_id, date;
+"""
+
+create_woe_day_view_qry = """
+CREATE OR REPLACE VIEW woe_day_view AS
+SELECT 
+    fact_ld_tbl.sensor_id,
+    lat,
+    lon,
+    date_trunc('day', hour) as date,
+    AVG(pm10) as daily_pm10,
+    AVG(pm25) as daily_pm25 
+FROM fact_ld_tbl 
+LEFT JOIN
+    dim_ld_tbl ON fact_ld_tbl.sensor_id = dim_ld_tbl.sensor_id
+WHERE 
+    lat >= 51.2 AND lat <= 51.6 AND lon >= -3.0 AND lon <= -2.18
+GROUP BY fact_ld_tbl.sensor_id, lat, lon, date
+ORDER BY fact_ld_tbl.sensor_id, date;
+"""
 
 # %%
 
@@ -209,8 +221,11 @@ try:
             insert_dim()
             insert_fact()
             con.execute("DELETE FROM ld_clean_tbl;")
-
-    con.sql(create_woe_view)
+    con.sql('DELETE FROM fact_ld_tbl WHERE pm10 > 1998;')
+    con.sql(create_daily_view_qry)
+    con.sql(create_woe_hour_view_qry)
+    con.sql(create_woe_day_view_qry)
+    con.sql('DROP TABLE ld_clean_tbl;')
     con.execute("COMMIT;")
     con.execute('CHECKPOINT;')
 except Exception as e:
@@ -219,24 +234,17 @@ except Exception as e:
     print(f"Transaction rolled back due to an error: {e}")
 
 # %%
-
 con.sql('SHOW TABLES;')
-
 # %%
 con.sql('SELECT count(*) FROM fact_ld_tbl')
-
-
 # %%
-
+con.sql('SELECT * FROM woe_day_view LIMIT 10')
+# %%
+con.sql('SELECT * FROM fact_ld_tbl WHERE pm10 > 200')
+# %%
 con.sql('DESCRIBE fact_ld_tbl')
-
-# %%
-
-hourly_df = con.sql('FROM fact_ld_view;').pl()
-hourly_df.glimpse()
-
 # %%
 con.close()
 
-#%%
+
 

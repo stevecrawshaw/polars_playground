@@ -4,6 +4,11 @@ wget -r -np -nH --cut-dirs=3 -R "index.html*" -A "2024*_sds011.zip" https://arch
 
 	2023-01_ds18b20.zip
 ./duckdb ld.duckdb
+
+.tables
+.exit
+
+SHOW TABLES;
 -- use ctr+shift+enter to send to console. Set in keybindings.json
 -- inspect the polars cleaned subset of the data
 CREATE OR REPLACE table tdf_tbl as SELECT * FROM read_csv_auto('data/tdf100k.csv');
