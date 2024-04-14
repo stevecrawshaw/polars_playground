@@ -103,7 +103,7 @@ def insert_data_from_parquet(file):
         FROM 
             read_parquet('{file}')
         WHERE 
-            lat >= 50 AND lat <= 53 AND lon >= -4.5 AND lon <= 1.7
+            lat >= 50 AND lat <= 53 AND lon >= -4.5 AND lon <= -1.7
     ) AS subquery
     GROUP BY 
         sensor_id,

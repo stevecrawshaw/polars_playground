@@ -161,4 +161,6 @@ cython_debug/
 /data
 duckdb
 ld.duckdb
+/luftdaten
+/woe_sensor_community
 
