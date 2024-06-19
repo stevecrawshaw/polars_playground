@@ -91,7 +91,7 @@ def insert_data_from_parquet(file):
     """
     Accepts a parquet file and groups by sensor_id and hour (ending) to 
     calculate hourly mean PM10 and PM2.5 for the month
-    Inserts into the temporary table ld_clean_tbl
+    Inserts into the temporary table ld_clean_tbluv pip insta
     """
     copy_qry = f"""
     INSERT INTO ld_clean_tbl (sensor_id, lat, lon, hour, pm10, pm25)

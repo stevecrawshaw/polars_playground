@@ -2,8 +2,10 @@
 wget -r -np -nH --cut-dirs=3 -R "index.html*" -A "2024*_sds011.zip" https://archive.sensor.community/csv_per_month/
 
 
-	2023-01_ds18b20.zip
-./duckdb ld.duckdb
+2023-01_ds18b20.zip
+
+duckdb data/ld_clean.duckdb
+./duckdb data/ld_clean.duckdb --linux
 
 .tables
 .exit
