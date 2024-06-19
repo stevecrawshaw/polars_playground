@@ -24,11 +24,15 @@ columns =  """ columns ={
 
 #%%
 def read_csv(csv_file,
-        columns, 
-        folder_path = 'data',
+        columns: dict = columns, 
+        folder_path: str = 'data',
         delim = ';', 
         header = True, 
-        ignore_errors = True):
+        ignore_errors: bool = True) -> str:
+    """
+    Read a CSV file and write it to a Parquet file.
+    Return the path of the Parquet file.
+    """
     csv_path = os.path.join(folder_path, csv_file)
     parquet_path = os.path.join(folder_path, csv_file.replace('.csv', '.parquet'))
     qry = f"""
