@@ -1,6 +1,10 @@
 
 wget -r -np -nH --cut-dirs=3 -R "index.html*" -A "2024*_sds011.zip" https://archive.sensor.community/csv_per_month/
 
+wget -r -np -nd -A "2024-*_sds011.zip" -P ./2024_data https://archive.sensor.community/csv_per_month/2024-{01..12}/
+-- not enough space to unzip all the csvs
+./extract_csv_zip_delete.sh 'data/2024_data/'
+
 
 2023-01_ds18b20.zip
 
