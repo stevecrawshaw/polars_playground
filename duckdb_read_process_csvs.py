@@ -58,9 +58,11 @@ def extract_zip_files(folder_path):
 
 # %%
 # Extract all the .zip files in the specified folder
-if any(filename.endswith('.zip') for filename in os.listdir('data')):
-    extract_zip_files('data')
+if any(filename.endswith('.zip') for filename in os.listdir('data/2024_data')):
+    extract_zip_files('data/2024_data')
+#%%
 
+os.listdir('data/2024_data')
 # %%
 
 con = duckdb.connect('data/ld_clean.duckdb')
