@@ -1,5 +1,6 @@
 # %%
 import glob
+
 import ibis
 
 # %%
@@ -49,7 +50,7 @@ woe_data = tbl.to_polars()
 # %%
 woe_data.glimpse()
 # %%
-%%timeit -n1 -r1
+# %%
 tbl.to_parquet("data/woe_data.parquet")
 # %%
 
