@@ -44,7 +44,8 @@ for file in ld_files:
         tbl = tbl.union(con.read_parquet(file).pipe(filt))
 
 # %%
-
+tbl.execute(limit = 10)
+# %%
 woe_data = tbl.to_polars()
 
 # %%
