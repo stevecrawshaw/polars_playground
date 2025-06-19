@@ -1,10 +1,11 @@
-# %%
+#                    %%
 
-import zipfile
-import duckdb
 import os
-import glob
-import polars as pl
+import zipfile
+
+import duckdb
+
+
 # %%
 def extract_zip_files(folder_path):
     """
@@ -18,19 +19,21 @@ def extract_zip_files(folder_path):
     # Iterate through all files in the specified folder
     for filename in os.listdir(folder_path):
         # Check if the file is a .zip file
-        if filename.endswith('.zip'):
+        if filename.endswith(".zip"):
             # Construct the full path to the .zip file
             zip_path = os.path.join(folder_path, filename)
-            
+
             # Open the .zip file
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
                 # Extract all the contents into the same folder
                 csv_file = zip_ref.namelist()[0]
                 zip_ref.extractall(folder_path)
                 print(f"Extracted {filename}")
                 csv_path = os.path.join(folder_path, csv_file)
-                parquet_path = os.path.join(folder_path, csv_file.replace('.csv', '.parquet'))
-                col_dict =  """columns = {
+                parquet_path = os.path.join(
+                    folder_path, csv_file.replace(".csv", ".parquet")
+                )
+                col_dict = """columns = {
                     'sensor_id': BIGINT,
                     'sensor_type': VARCHAR,
                     'location': VARCHAR,
@@ -43,7 +46,7 @@ def extract_zip_files(folder_path):
                     'P2': FLOAT,
                     'durP2': FLOAT,
                     'ratioP2': FLOAT
-                }"""                
+                }"""
                 qry = f"""
                 COPY (SELECT * FROM read_csv('{csv_path}',
                 delim = ";",
@@ -56,22 +59,23 @@ def extract_zip_files(folder_path):
             os.remove(zip_path)
             os.remove(csv_path)
 
+
 # %%
 # Extract all the .zip files in the specified folder
-if any(filename.endswith('.zip') for filename in os.listdir('data/2024_data')):
-    extract_zip_files('data/2024_data')
-#%%
-
-os.listdir('data/2024_data')
+if any(filename.endswith(".zip") for filename in os.listdir("data/2024_data")):
+    extract_zip_files("data/2024_data")
 # %%
 
-con = duckdb.connect('data/ld_clean.duckdb')
-
-# %%
-con.sql('SHOW TABLES;')
+os.listdir("data/2024_data")
 # %%
 
-con.sql('FROM fact_ld_tbl LIMIT 10')
+con = duckdb.connect("data/ld_clean.duckdb")
+
+# %%
+con.sql("SHOW TABLES;")
+# %%
+
+con.sql("FROM fact_ld_tbl LIMIT 10")
 
 # %%
 create_ld_tbl = """
@@ -89,9 +93,10 @@ CREATE OR REPLACE TABLE fact_ld_tbl
 
 # %%
 
+
 def insert_data_from_parquet(file):
     """
-    Accepts a parquet file and groups by sensor_id and hour (ending) to 
+    Accepts a parquet file and groups by sensor_id and hour (ending) to
     calculate hourly mean PM10 and PM2.5 for the month
     Inserts into the temporary table ld_clean_tbluv pip insta
     """
@@ -121,10 +126,13 @@ def insert_data_from_parquet(file):
         sensor_id, 
         DATE_TRUNC('hour', timestamp);
     """
-# WoE lat >= 51.2 AND lat <= 51.6 AND lon >= -3.0 AND lon <= -2.18
-# Bounding box in query is for UK
+    # WoE lat >= 51.2 AND lat <= 51.6 AND lon >= -3.0 AND lon <= -2.18
+    # Bounding box in query is for UK
     con.execute(copy_qry)
+
+
 # %%
+
 
 def insert_dim():
     copy_qry = """
@@ -144,6 +152,7 @@ def insert_dim():
     """
     con.execute(copy_qry)
 
+
 def insert_fact():
     copy_qry = """
     INSERT INTO fact_ld_tbl (sensor_id, hour, pm10, pm25)
@@ -159,6 +168,7 @@ def insert_fact():
         sensor_id;
     """
     con.execute(copy_qry)
+
 
 create_woe_hour_view_qry = """
 CREATE OR REPLACE VIEW woe_hour_view AS
@@ -215,45 +225,43 @@ ORDER BY fact_ld_tbl.sensor_id, date;
 
 try:
     con.execute("BEGIN TRANSACTION;")
-    #con.execute('INSTALL spatial;')
-    #con.execute('LOAD spatial;')
+    # con.execute('INSTALL spatial;')
+    # con.execute('LOAD spatial;')
     con.sql(create_ld_tbl)
     con.sql(create_dim_ld_tbl)
     con.sql(create_fact_ld_tbl)
 
-    for filename in os.listdir('data'):
-        if filename.endswith('.parquet'):
-            insert_data_from_parquet(os.path.join('data', filename))
+    for filename in os.listdir("data"):
+        if filename.endswith(".parquet"):
+            insert_data_from_parquet(os.path.join("data", filename))
             print(f"Inserted data from {filename}")
             insert_dim()
             insert_fact()
             con.execute("DELETE FROM ld_clean_tbl;")
-    con.sql('DELETE FROM fact_ld_tbl WHERE pm10 > 1998;')
+    con.sql("DELETE FROM fact_ld_tbl WHERE pm10 > 1998;")
     con.sql(create_daily_view_qry)
     con.sql(create_woe_hour_view_qry)
     con.sql(create_woe_day_view_qry)
-    con.sql('DROP TABLE ld_clean_tbl;')
+    con.sql("DROP TABLE ld_clean_tbl;")
     con.execute("COMMIT;")
-    con.execute('CHECKPOINT;')
+    con.execute("CHECKPOINT;")
 except Exception as e:
     # If an error occurs, rollback the transaction
     con.execute("ROLLBACK;")
     print(f"Transaction rolled back due to an error: {e}")
 
 # %%
-con.sql('SHOW TABLES;')
+con.sql("SHOW TABLES;")
 # %%
-con.sql('SELECT count(*) FROM fact_ld_tbl')
+con.sql("SELECT count(*) FROM fact_ld_tbl")
 # %%
-con.sql('SELECT * FROM woe_day_view LIMIT 10')
+con.sql("SELECT * FROM woe_day_view LIMIT 10")
 # %%
-con.sql('SELECT * FROM fact_ld_tbl WHERE pm10 > 200')
+con.sql("SELECT * FROM fact_ld_tbl WHERE pm10 > 200")
 # %%
-con.sql('DESCRIBE fact_ld_tbl')
+con.sql("DESCRIBE fact_ld_tbl")
 # %%
 con.close()
-
-
 
 
 # %%
