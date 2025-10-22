@@ -28,6 +28,7 @@ test_tbl.glimpse()
 # It returns (assigns to cols_to_drop) the names of columns where all values are null.
 
 cols_to_drop = [col.name for col in test_tbl if col.is_null().all()]
+
 # %%
 # Drop the identified columns
 df_cleaned = test_tbl.drop(cols_to_drop)
@@ -48,3 +49,8 @@ test_tbl.glimpse()
 # But is a good demonstration of using selectors
 # - more elegant than a list comprehension
 test_tbl.drop(cs.by_dtype(pl.Null)).glimpse()
+
+# %%
+
+for col in test_tbl:
+    print(col.name, col.dtype)
