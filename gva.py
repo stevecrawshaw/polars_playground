@@ -4,8 +4,10 @@ import polars.selectors as cs
 
 # %%
 # Read the data
-gva: pl.DataFrame = pl.read_csv("data/gva_per_hour_cp_unsmoothed.csv", skip_rows=4)
-gva.head()
+gva: pl.DataFrame = pl.read_csv(
+    "data/gva_per_hour_cp_unsmoothed.csv", skip_rows=4, n_rows=34
+)
+gva.tail()
 
 # %%
 # Create a cleaned dataset with only Pounds and area columns
