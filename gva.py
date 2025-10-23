@@ -35,20 +35,17 @@ gva_pounds: pl.DataFrame = gva_clean.drop(pl.col(["area_code", "area_name"]))
 # Use a loop to normalise each Pounds column by the UKX value for that column
 # hint: use enumerate to get the index and column name
 
-gva_pounds_normalised_ukx: pl.DataFrame = pl.DataFrame()
 for i, col in enumerate(gva_pounds.columns):
-    gva_pounds_normalised_ukx = gva_pounds.with_columns(
-        (pl.col(col) / ukx[i]).alias(col)
-    )
+    gva_pounds = gva_pounds.with_columns((pl.col(col) / ukx[i]).alias(col))
 
 # %%
-gva_pounds_normalised_ukx.glimpse()
+gva_pounds.glimpse()
 
 # %%
 # Reconstruct the original dataframe with area_code and area_name columns
 # Hint: use pl.concat with how="horizontal"
 gva_reconstructed: pl.DataFrame = pl.concat(
-    [gva_clean.select(pl.col(["area_code", "area_name"])), gva_pounds_normalised_ukx],
+    [gva_pounds, gva_clean.select(pl.col(["area_code", "area_name"]))],
     how="horizontal",
 )
 
