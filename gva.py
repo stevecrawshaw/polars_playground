@@ -25,12 +25,11 @@ ukx: list[float] = [
     if k.startswith("Pounds")
 ]
 # %%
-ukx
 
 # %%
 
 # Drop area_code and area_name columns to get only Pounds columns in a new dataframe
-gva_pounds: pl.DataFrame = gva_clean.drop(pl.col(["area_code", "area_name"]))
+gva_pounds: pl.DataFrame = gva_clean.drop(["area_code", "area_name"])
 # %%
 # Use a loop to normalise each Pounds column by the UKX value for that column
 # hint: use enumerate to get the index and column name
